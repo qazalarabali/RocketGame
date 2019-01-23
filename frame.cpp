@@ -169,8 +169,36 @@ class Mane1
 	const int Mane1::Mane1_WIDTH[6]={62,62,62,62,62,62};
 	const int Mane1::Mane1_HEIGHT[6]={71,71,71,71,71,71};
 
-class mane2
-{};
+class Mane2
+{
+	public:
+		//The dimensions
+		static const int Mane2_WIDTH[2];
+		static const int Mane2_HEIGHT[2];
+		bool visibility[2];
+		//Maximum axis velocity
+		static const int Mane2_VEL = 640;
+
+		//Initializes the variables
+		Mane2();
+
+		//Moves the dot
+		void move( float timeStep );
+
+		//Shows the dot on the screen
+		void render();
+
+		void ifVisible();
+
+    //private:
+		float mPosX[2], mPosY[2];
+		float mVelX, mVelY;
+};
+	const int Mane2::Mane2_WIDTH[2]={100,100};
+	const int Mane2::Mane2_HEIGHT[2]={100,100};
+
+
+
 
 
 
@@ -192,7 +220,7 @@ class Rocket
 		void handleEvent( SDL_Event& e );
 
 		//Moves the dot
-		void move( float timeStep );
+		void move ( float timeStep );
 
 		//Shows the dot on the screen
 		void render();
@@ -225,8 +253,7 @@ SDL_Renderer* gRenderer = NULL;
 //0-6 bg (7) 7-12 alien (6)
 LTexture gDotTexture[7];
 LTexture alienTexture[6];
-
-
+LTexture planetTexture[2];
 LTexture RocketTexture[2];
 
 LTexture::LTexture()
@@ -650,6 +677,21 @@ Mane1::Mane1()
     mVelY = 150;
 }
 
+Mane2::Mane2()
+{
+	srand(time(0));
+    //Initialize the position
+	for (int i=0; i<2; i++)
+    {
+		mPosX[i] = rand()%(520 - Mane2_WIDTH[i]);
+    	mPosY[i] =  -Mane2_HEIGHT[i];
+		visibility[i]= false;
+	}
+
+    //Initialize the velocity
+    mVelY = 80;
+}
+
 Rocket::Rocket()
 {
 	degrees=45;
@@ -683,7 +725,8 @@ void Background::move( float timeStep )
 				visibility[i]=false;
 			}
 		}
-		
+	}
+}
 
 void Rocket::move( float timeStep )
 {
@@ -717,8 +760,24 @@ void Mane1::move( float timeStep )
 		
 	}
 }
+void Mane2::move( float timeStep )
+{
+    //Move the dot up or down
+	for (int i=0; i<2; i++)
+	{
+		if (visibility[i]==true)
+		{
+			mPosY[i] += mVelY * timeStep;
 
->>>>>>> 70b5faafbabad8018e3789f4211699b20ed30bb3
+			if( mPosY[i] > SCREEN_HEIGHT)
+			{
+				mPosY[i] = - Mane2_HEIGHT[i];
+				visibility[i]=false;
+			}
+		}
+	}
+}
+
 void Background::render()
 {
 
@@ -749,9 +808,25 @@ void Mane1::render()
     //Show the dot
 	for (int i=0; i<6; i++)
 	{
+		
 		if (visibility[i]==true)
 		{
 			alienTexture[i].render( (int)mPosX[i], (int)mPosY[i] );
+			cout<<"a";
+		}
+		
+	}
+	
+}
+
+void Mane2::render()
+{
+    //Show the dot
+	for (int i=0; i<2; i++)
+	{
+		if (visibility[i]==true)
+		{
+			planetTexture[i].render( (int)mPosX[i], (int)mPosY[i] );
 		}
 		
 	}
@@ -795,16 +870,32 @@ void Mane1::ifVisible()
 			}
 		}
 	}
+}
+
+void Mane2::ifVisible()
+{
+	srand(time(0));
+	int manevisible=0, manedistance=0;
+	for (int i=0; i<2; i++)
+	{
+		if (Mane2::visibility[i]==true)
+		{
+			manevisible++;
+			if (Mane2::mPosY[i]>(rand()%300 +350))
+			{
+				manedistance++;
+			}
+		}
+	}
 	//int randomnumber= rand()%3;
 	if ((manevisible<2)&&(manedistance==manevisible))
 	{
-		int p=rand()%6;
-		Mane1::visibility[p]=true;
+		int p=rand()%2;
+		Mane2::visibility[p]=true;
 		manevisible++;
 	}
 }
 
->>>>>>> 70b5faafbabad8018e3789f4211699b20ed30bb3
 bool init()
 {
 	//Initialization flag
@@ -917,10 +1008,20 @@ bool loadMedia()
 	{
 		printf( "Failed to load p1 texture!\n" );
 		success = false;
+	}
 
+	
 	for (int i=0; i<6; i++)
 	{
-			if( !alienTexture[i].loadFromFile( "alien.bmp" ) )
+		if( !alienTexture[i].loadFromFile( "alien.bmp" ) )
+		{
+			printf( "Failed to load alien texture!\n" );
+			success = false;
+		}
+	}
+	for (int i=0; i<2; i++)
+	{
+		if( !planetTexture[i].loadFromFile( "planet.bmp" ) )
 		{
 			printf( "Failed to load alien texture!\n" );
 			success = false;
@@ -928,6 +1029,7 @@ bool loadMedia()
 	}
 
 	return success;
+
 }
 
 void close()
@@ -937,7 +1039,9 @@ void close()
 	{
 		gDotTexture[i].free();
 	}
-	RocketTexture.free();
+	
+	RocketTexture[0].free();
+	RocketTexture[1].free();
 
 	for (int i=0; i<6; i++)
 	{
@@ -962,6 +1066,7 @@ int main( int argc, char* args[] )
 
 	Rocket rocket;
 	Mane1 alien;
+	Mane2 planet;
 
 	//Start up SDL and create window
 	if( !init() )
@@ -1004,16 +1109,15 @@ int main( int argc, char* args[] )
 
 				bg.ifVisible();
 				alien.ifVisible();
-
+				planet.ifVisible();
 				//Calculate time step
 				float timeStep = stepTimer.getTicks() / 1000.f;
 
 				//Move for time step
 				bg.move( timeStep );
-
 				rocket.move( timeStep);
-
 				alien.move( timeStep );
+				planet.move( timeStep );
 
 				//Restart step timer
 				stepTimer.start();
@@ -1025,8 +1129,8 @@ int main( int argc, char* args[] )
 				//Render dot
 				bg.render();
 				rocket.render();
-
 				alien.render();
+				planet.render();
 				
 				
 
