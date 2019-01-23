@@ -139,6 +139,39 @@ class Background
 		const int Background::BG_HEIGHT[7]={100,120,160,90,140,80,130};
 
 
+
+class Rocket
+{
+    public:
+		//The dimensions of the dot
+		static const int R_WIDTH=87;
+		static const int R_HEIGHT=118;
+
+		//Maximum axis velocity of the dot
+		static const int R_VEL = 640;
+
+		//Initializes the variables
+		Rocket();
+		int dir;
+		int degrees;
+		//Takes key presses and adjusts the dot's velocity
+		void handleEvent( SDL_Event& e );
+
+		//Moves the dot
+		void move( float timeStep );
+
+		//Shows the dot on the screen
+		void render();
+
+    //private:
+		float mPosX, mPosY;
+		float mVelX, mVelY;
+
+		SDL_Rect R_rect={mPosX, mPosY, R_WIDTH,R_HEIGHT};
+		SDL_RendererFlip flipType = SDL_FLIP_HORIZONTAL;
+};
+
+
 //Starts up SDL and creates window
 bool init();
 
@@ -156,6 +189,8 @@ SDL_Renderer* gRenderer = NULL;
 
 //Scene textures
 LTexture gDotTexture[7];
+
+LTexture RocketTexture[2];
 
 LTexture::LTexture()
 {
@@ -564,6 +599,23 @@ Background::Background()
 }
 
 
+Rocket::Rocket()
+{
+	degrees=45;
+	srand(time(0));
+    //Initialize the position
+	dir= rand()%2;
+	if (dir==0)
+	{
+		degrees=180-degrees;
+	}
+	mPosX=(SCREEN_WIDTH- R_WIDTH)/2;
+	mPosY= SCREEN_HEIGHT-R_HEIGHT-30;
+    //Initialize the velocity
+    mVelY = 100;
+}
+
+
 
 void Background::move( float timeStep )
 {
@@ -584,6 +636,21 @@ void Background::move( float timeStep )
 	}
 }
 
+void Rocket::move( float timeStep )
+{
+    //Move the dot up or down
+	if (dir==0)
+	{
+		mPosX+=mVelX;
+		
+	}
+	else if(dir==1)
+	{
+		mPosX-=mVelX;
+	}
+}
+
+
 void Background::render()
 {
 
@@ -596,6 +663,15 @@ void Background::render()
 		}
 		
 	}
+	
+}
+
+void Rocket::render()
+{
+
+    //Show the dot
+	RocketTexture[dir].render( (int)mPosX, (int)mPosY);
+	//SDL_RenderCopyEx( gRenderer, , NULL, &R_rect, degrees, NULL, flipType );
 	
 }
 
@@ -701,6 +777,17 @@ bool loadMedia()
 		success = false;
 	}
 
+	if( !RocketTexture[0].loadFromFile( "rocket.bmp" ) )
+	{
+		printf( "Failed to load p1 texture!\n" );
+		success = false;
+	}
+	if( !RocketTexture[1].loadFromFile( "rocket.bmp" ) )
+	{
+		printf( "Failed to load p1 texture!\n" );
+		success = false;
+	}
+
 	return success;
 }
 
@@ -711,6 +798,7 @@ void close()
 	{
 		gDotTexture[i].free();
 	}
+	RocketTexture.free();
 
 	//Destroy window	
 	SDL_DestroyRenderer( gRenderer );
@@ -726,6 +814,8 @@ void close()
 int main( int argc, char* args[] )
 {
 	Background bg;
+
+	Rocket rocket;
 	//Start up SDL and create window
 	if( !init() )
 	{
@@ -792,7 +882,7 @@ int main( int argc, char* args[] )
 
 				//Move for time step
 				bg.move( timeStep );
-
+				rocket.move( timeStep);
 				//Restart step timer
 				stepTimer.start();
 
@@ -802,7 +892,7 @@ int main( int argc, char* args[] )
 
 				//Render dot
 				bg.render();
-
+				rocket.render();
 				//Update screen
 				SDL_RenderPresent( gRenderer );
 			}
