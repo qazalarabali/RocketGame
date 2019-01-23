@@ -8,6 +8,8 @@ and may not be redistributed without written permission.*/
 #include <string>
 #include <ctime>
 #include <cstdlib>
+#include <iostream>
+using namespace std;
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 520;
@@ -122,8 +124,35 @@ class Background
 		//Initializes the variables
 		Background();
 
-		//Takes key presses and adjusts the dot's velocity
-		void handleEvent( SDL_Event& e );
+		//Moves the dot
+		void move( float timeStep );
+
+		//Shows the dot on the screen
+		void render();
+
+		//check
+		void ifVisible();
+
+    //private:
+		float mPosX[7], mPosY[7];
+		float mVelX, mVelY;
+};
+	const int Background::BG_WIDTH[7]={100,120,160,90,193,80,130};
+	const int Background::BG_HEIGHT[7]={100,120,160,90,140,80,130};
+
+
+class Mane1
+{
+    public:
+		//The dimensions
+		static const int Mane1_WIDTH[6];
+		static const int Mane1_HEIGHT[6];
+		bool visibility[6];
+		//Maximum axis velocity
+		static const int Mane1_VEL = 640;
+
+		//Initializes the variables
+		Mane1();
 
 		//Moves the dot
 		void move( float timeStep );
@@ -131,12 +160,17 @@ class Background
 		//Shows the dot on the screen
 		void render();
 
+		void ifVisible();
+
     //private:
-		float mPosX[7], mPosY[7];
+		float mPosX[6], mPosY[6];
 		float mVelX, mVelY;
 };
-		const int Background::BG_WIDTH[7]={100,120,160,90,193,80,130};
-		const int Background::BG_HEIGHT[7]={100,120,160,90,140,80,130};
+	const int Mane1::Mane1_WIDTH[6]={62,62,62,62,62,62};
+	const int Mane1::Mane1_HEIGHT[6]={71,71,71,71,71,71};
+
+class mane2
+{};
 
 
 //Starts up SDL and creates window
@@ -155,7 +189,10 @@ SDL_Window* gWindow = NULL;
 SDL_Renderer* gRenderer = NULL;
 
 //Scene textures
+//0-6 bg (7) 7-12 alien (6)
 LTexture gDotTexture[7];
+LTexture alienTexture[6];
+
 
 LTexture::LTexture()
 {
@@ -560,9 +597,23 @@ Background::Background()
 	}
 
     //Initialize the velocity
-    mVelY = 100;
+    mVelY = 80;
 }
 
+Mane1::Mane1()
+{
+	srand(time(0));
+    //Initialize the position
+	for (int i=0; i<6; i++)
+    {
+		mPosX[i] = rand()%(520 - Mane1_WIDTH[i]);
+    	mPosY[i] =  -Mane1_HEIGHT[i];
+		visibility[i]= false;
+	}
+
+    //Initialize the velocity
+    mVelY = 150;
+}
 
 
 void Background::move( float timeStep )
@@ -584,6 +635,25 @@ void Background::move( float timeStep )
 	}
 }
 
+void Mane1::move( float timeStep )
+{
+    //Move the dot up or down
+	for (int i=0; i<6; i++)
+	{
+		if (visibility[i]==true)
+		{
+			mPosY[i] += mVelY * timeStep;
+
+			if( mPosY[i] > SCREEN_HEIGHT)
+			{
+				mPosY[i] = - Mane1_HEIGHT[i];
+				visibility[i]=false;
+			}
+		}
+		
+	}
+}
+
 void Background::render()
 {
 
@@ -597,6 +667,66 @@ void Background::render()
 		
 	}
 	
+}
+
+void Mane1::render()
+{
+    //Show the dot
+	for (int i=0; i<6; i++)
+	{
+		if (visibility[i]==true)
+		{
+			alienTexture[i].render( (int)mPosX[i], (int)mPosY[i] );
+		}
+		
+	}
+	
+}
+
+void Background::ifVisible()
+{
+	int bgvisible=0, bgdistance=0;
+	for (int i=0; i<7; i++)
+	{
+		if (Background::visibility[i]==true)
+		{
+			bgvisible++;
+			if (Background::mPosY[i]>175)
+			{
+				bgdistance++;
+			}
+		}
+	}
+	while ((bgvisible<4)&&(bgdistance==bgvisible))
+	{
+		int p=rand()%7 ;
+		Background::visibility[p]=true;
+		bgvisible++;
+	}
+}
+
+void Mane1::ifVisible()
+{
+	srand(time(0));
+	int manevisible=0, manedistance=0;
+	for (int i=0; i<6; i++)
+	{
+		if (Mane1::visibility[i]==true)
+		{
+			manevisible++;
+			if (Mane1::mPosY[i]>(rand()%300 +350))
+			{
+				manedistance++;
+			}
+		}
+	}
+	//int randomnumber= rand()%3;
+	if ((manevisible<2)&&(manedistance==manevisible))
+	{
+		int p=rand()%6;
+		Mane1::visibility[p]=true;
+		manevisible++;
+	}
 }
 
 bool init()
@@ -701,6 +831,15 @@ bool loadMedia()
 		success = false;
 	}
 
+	for (int i=0; i<6; i++)
+	{
+			if( !alienTexture[i].loadFromFile( "alien.bmp" ) )
+		{
+			printf( "Failed to load alien texture!\n" );
+			success = false;
+		}
+	}
+
 	return success;
 }
 
@@ -710,6 +849,11 @@ void close()
 	for (int i=0; i<7; i++)
 	{
 		gDotTexture[i].free();
+	}
+
+	for (int i=0; i<6; i++)
+	{
+		alienTexture[i].free();
 	}
 
 	//Destroy window	
@@ -726,6 +870,7 @@ void close()
 int main( int argc, char* args[] )
 {
 	Background bg;
+	Mane1 alien;
 	//Start up SDL and create window
 	if( !init() )
 	{
@@ -746,9 +891,6 @@ int main( int argc, char* args[] )
 			//Event handler
 			SDL_Event e;
 
-			//The dot that will be moving around on the screen
-			//Dot dot;
-
 			//Keeps track of time between steps
 			LTimer stepTimer;
 
@@ -768,30 +910,15 @@ int main( int argc, char* args[] )
 					//bg.handleEvent( e );
 				}
 
-				int bgvisible=0, bgdistance=0;
-				for (int i=0; i<7; i++)
-				{
-					if (bg.visibility[i]==true)
-					{
-						bgvisible++;
-						if (bg.mPosY[i]>175)
-						{
-							bgdistance++;
-						}
-					}
-				}
-				if ((bgvisible<4)&&(bgdistance==bgvisible))
-				{
-					int p=rand()%7 ;
-					bg.visibility[p]=true;
-					bgvisible++;
-				}
+				bg.ifVisible();
+				alien.ifVisible();
 
 				//Calculate time step
 				float timeStep = stepTimer.getTicks() / 1000.f;
 
 				//Move for time step
 				bg.move( timeStep );
+				alien.move( timeStep );
 
 				//Restart step timer
 				stepTimer.start();
@@ -802,6 +929,9 @@ int main( int argc, char* args[] )
 
 				//Render dot
 				bg.render();
+				alien.render();
+				
+				
 
 				//Update screen
 				SDL_RenderPresent( gRenderer );
